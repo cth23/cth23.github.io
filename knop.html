@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tennisspel — speel tegen de computer</title>
+  <style>
+    :root{ --bg:#0b8f6a; --court:#2b7a4a; --line:#ffffffcc; --accent:#ffd166; }
+    html,body{ height:100%; margin:0; font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; background:var(--bg); color:#fff; }
+    .container{ height:100vh; display:flex; align-items:center; justify-content:center; gap:1rem; padding:1rem; box-sizing:border-box; }
+    .card{ width:100%; max-width:1000px; background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0.02)); border-radius:12px; padding:12px; box-shadow:0 8px 30px rgba(2,6,23,0.6); }
+    header{ display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:8px; }
+    h1{ font-size:1.1rem; margin:0; }
+    .controls{ display:flex; gap:8px; align-items:center; }
+    button{ background:var(--accent); color:#003; border:none; padding:.5rem .75rem; border-radius:8px; font-weight:700; cursor:pointer; }
+    button:active{ transform:translateY(1px); }
+    label{ font-size:0.9rem; display:flex; align-items:center; gap:6px; }
+    canvas{ display:block; width:100%; height:560px; max-height:65vh; background:linear-gradient(#1d5a3f,#255e45); border-radius:8px; }
+    .status{ margin-top:8px; display:flex; gap:12px; align-items:center; justify-content:space-between; font-size:0.95rem; }
+    .legend{ color:#fff9; font-size:0.85rem }
+    @media (max-width:640px){ canvas{ height:420px; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <header>
+        <h1>Tennisspel — speel tegen de computer</h1>
+        <div class="controls">
+          <label>Besturing: <span class="legend">W/S of pijltjes; muis ook mogelijk</span></label>
+          <button id="startBtn">Start / Reset</button>
+          <button id="serveBtn">Serve</button>
+        </div>
+      </header>
+
+      <canvas id="court" width="1000" height="560" role="img" aria-label="Tennisbaan met bal en spelers"></canvas>
+
+      <div class="status">
+        <div id="scoreText">Speler 0 — 0 Computer</div>
+        <div id="infoText">Druk op Start om te beginnen. Space = serve</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Simpel tennisspel (op pong-achtige mechanica) in één bestand.
+    // Controls: W/S of pijltjes omhoog/omlaag; muis bewegen; Space/Serve-knop om te serveren.
+
+    const canvas = document.getElementById('court');
+    const ctx = canvas.getContext('2d');
+    const startBtn = document.getElementById('startBtn');
+    const serveBtn = document.getElementById('serveBtn');
+    const scoreText = document.getElementById('scoreText');
+    const infoText = document.getElementById('infoText');
+
+    // Responsieve scaling
+    function fitCanvas() {
+      const ratio = canvas.width / canvas.height;
+      const parentWidth = canvas.clientWidth;
+      const newHeight = Math.round(parentWidth / ratio);
+      canvas.style.height = newHeight + 'px';
+    }
+    window.addEventListener('resize', fitCanvas);
+    fitCanvas();
+
+    // Game state
+    const state = {
+      running: false,
+      serving: false,
+      ball: { x: 500, y: 280, vx: 0, vy: 0, r: 10 },
+      player: { x: 60, y: 280, w: 14, h: 80, speed: 6, score: 0 },
+      ai: { x: 940, y: 280, w: 14, h: 80, speed: 5, score: 0 },
+      court: { width: canvas.width, height: canvas.height },
+      maxScore: 7,
+      lastTimestamp: 0
+    };
+
+    // Draw court
+    function drawCourt() {
+      const w = canvas.width;
+      const h = canvas.height;
+      // background gradient
+      const g = ctx.createLinearGradient(0,0,0,h);
+      g.addColorStop(0,'#245f40');
+      g.addColorStop(1,'#1d5a3f');
+      ctx.fillStyle = g;
+      ctx.fillRect(0,0,w,h);
+
+      // center line (net)
+      ctx.fillStyle = 'rgba(255,255,255,0.06)';
+      ctx.fillRect(w/2 - 2, 40, 4, h - 80);
+
+      // baselines & sidelines
+      ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(40, 40, w - 80, h - 80);
+
+      // service lines
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6,8]);
+      ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+      ctx.beginPath();
+      ctx.moveTo(w/2 - (w-160)/4, 40);
+      ctx.lineTo(w/2 - (w-160)/4, h-40);
+      ctx.moveTo(w/2 + (w-160)/4, 40);
+      ctx.lineTo(w/2 + (w-160)/4, h-40);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // net top highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.06)';
+      ctx.fillRect(40, h/2 - 6, w - 80, 12);
+    }
+
+    // Draw paddles (rackets)
+    function drawPaddle(p) {
+      ctx.save();
+      ctx.fillStyle = '#fff';
+      // racket handle
+      ctx.fillRect(p.x - p.w/2, p.y - p.h/2, p.w, p.h);
+      // simple racket head circle
+      ctx.beginPath();
+      ctx.ellipse(p.x + (p === state.player ? 18 : -18), p.y, 24, 28, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Draw ball
+    function drawBall(b) {
+      ctx.beginPath();
+      ctx.fillStyle = '#ffeb3b';
+      ctx.arc(b.x, b.y, b.r, 0, Math.PI*2);
+      ctx.fill();
+      // shine
+      ctx.beginPath();
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.arc(b.x - b.r/3, b.y - b.r/3, b.r/3, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    // Reset positions
+    function resetPositions() {
+      state.player.y = canvas.height/2;
+      state.ai.y = canvas.height/2;
+      state.ball.x = canvas.width/2;
+      state.ball.y = canvas.height/2;
+      state.ball.vx = 0;
+      state.ball.vy = 0;
+      state.serving = true;
+      infoText.textContent = 'Press Space or Serve to serve';
+    }
+
+    // Serve: set ball velocity toward opponent
+    function serve(toRight = true) {
+      const speed = 6 + Math.random() * 2;
+      const angle = (Math.random() - 0.5) * 0.6; // slightly up/down
+      state.ball.vx = (toRight ? 1 : -1) * speed * Math.cos(angle);
+      state.ball.vy = speed * Math.sin(angle);
+      state.serving = false;
+      infoText.textContent = 'Rally!';
+    }
+
+    // Collision paddle
+    function paddleCollision(p) {
+      const b = state.ball;
+      const px = p.x - (p === state.player ? -1 : 1) * 0; // approximate
+      const pyTop = p.y - p.h/2 - 2;
+      const pyBottom = p.y + p.h/2 + 2;
+      if (b.x - b.r < px + p.w/2 && b.x + b.r > px - p.w/2 && b.y > pyTop && b.y < pyBottom) {
+        return true;
+      }
+      return false;
+    }
+
+    // Game loop
+    function update(dt) {
+      const b = state.ball;
+      if (!state.running) return;
+
+      // Move player (handled by input)
+      // Move AI: simple tracking with easing + limit
+      const aiTarget = b.y;
+      const dy = aiTarget - state.ai.y;
+      state.ai.y += Math.sign(dy) * Math.min(Math.abs(dy) * 0.12, state.ai.speed);
+      // clamp
+      state.ai.y = Math.max(state.ai.h/2 + 40, Math.min(canvas.height - state.ai.h/2 - 40, state.ai.y));
+
+      // If serving, keep ball near server
+      if (state.serving) {
+        // put ball near player or ai depending on who serves: left serves first (player)
+        b.x = state.player.x + 30;
+        b.y = state.player.y;
+        b.vx = 0; b.vy = 0;
+        return;
+      }
+
+      // Move ball
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+
+      // Top / bottom collision
+      if (b.y - b.r < 40) { b.y = 40 + b.r; b.vy *= -1; }
+      if (b.y + b.r > canvas.height - 40) { b.y = canvas.height - 40 - b.r; b.vy *= -1; }
+
+      // Paddle collisions (basic reflection)
+      // player
+      if (b.x - b.r <= state.player.x + state.player.w/2) {
+        const p = state.player;
+        if (b.y > p.y - p.h/2 && b.y < p.y + p.h/2) {
+          // reflect
+          b.x = p.x + p.w/2 + b.r + 1;
+          b.vx = Math.abs(b.vx) + 0.5; // increase speed slightly
+          // adjust angle based on hit position
+          const relative = (b.y - p.y) / (p.h/2);
+          b.vy = relative * 6;
+        }
+      }
+      // ai
+      if (b.x + b.r >= state.ai.x - state.ai.w/2) {
+        const p = state.ai;
+        if (b.y > p.y - p.h/2 && b.y < p.y + p.h/2) {
+          b.x = p.x - p.w/2 - b.r - 1;
+          b.vx = -Math.abs(b.vx) - 0.5;
+          const relative = (b.y - p.y) / (p.h/2);
+          b.vy = relative * 6;
+        }
+      }
+
+      // Check out of bounds (score)
+      if (b.x + b.r < 40) {
+        // computer scores
+        state.ai.score += 1; onScore('ai');
+      }
+      if (b.x - b.r > canvas.width - 40) {
+        // player scores
+        state.player.score += 1; onScore('player');
+      }
+
+      // clamp ball speed
+      const maxSpeed = 18;
+      const speed = Math.sqrt(b.vx*b.vx + b.vy*b.vy);
+      if (speed > maxSpeed) {
+        const s = maxSpeed / speed;
+        b.vx *= s; b.vy *= s;
+      }
+    }
+
+    function onScore(who) {
+      state.serving = true;
+      // reset ball to center and pause
+      state.ball.x = canvas.width/2;
+      state.ball.y = canvas.height/2;
+      state.ball.vx = 0; state.ball.vy = 0;
+      infoText.textContent = who === 'player' ? 'Punt voor speler' : 'Punt voor computer';
+      updateScoreText();
+
+      // check win
+      if (state.player.score >= state.maxScore || state.ai.score >= state.maxScore) {
+        state.running = false;
+        const winner = state.player.score > state.ai.score ? 'Speler wint!' : 'Computer wint!';
+        infoText.textContent = winner + ' Druk Start om opnieuw te spelen.';
+      }
+    }
+
+    function updateScoreText() {
+      scoreText.textContent = `Speler ${state.player.score} — ${state.ai.score} Computer`;
+    }
+
+    // Draw everything
+    function draw() {
+      const w = canvas.width;
+      const h = canvas.height;
+      drawCourt();
+      drawPaddle(state.player);
+      drawPaddle(state.ai);
+      drawBall(state.ball);
+
+      // Draw center text when not running
+      if (!state.running) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.fillRect(w/2 - 200, h/2 - 40, 400, 80);
+        ctx.fillStyle = '#fff';
+        ctx.font = '20px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Druk Start om te spelen — Space = serve', w/2, h/2 + 6);
+        ctx.restore();
+      }
+    }
+
+    // Game loop runner using requestAnimationFrame
+    function loop(ts) {
+      if (!state.lastTimestamp) state.lastTimestamp = ts;
+      const dtRaw = (ts - state.lastTimestamp) / (1000/60); // dt in frames of 60fps
+      const dt = Math.min(dtRaw, 4); // clamp
+      update(dt);
+      draw();
+      state.lastTimestamp = ts;
+      requestAnimationFrame(loop);
+    }
+
+    // Input handling
+    const input = { up: false, down: false };
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') input.up = true;
+      if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') input.down = true;
+      if (e.code === 'Space') {
+        if (state.serving) serve(true);
+      }
+    });
+    window.addEventListener('keyup', (e) => {
+      if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') input.up = false;
+      if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') input.down = false;
+    });
+
+    // Mouse control: move player
+    canvas.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const scale = canvas.height / rect.height;
+      const y = (e.clientY - rect.top) * scale;
+      state.player.y = Math.max(state.player.h/2 + 40, Math.min(canvas.height - state.player.h/2 - 40, y));
+    });
+
+    // Update player position from keyboard each tick
+    function handlePlayerMovement() {
+      if (input.up) state.player.y -= state.player.speed;
+      if (input.down) state.player.y += state.player.speed;
+      // clamp
+      state.player.y = Math.max(state.player.h/2 + 40, Math.min(canvas.height - state.player.h/2 - 40, state.player.y));
+    }
+
+    // Integrate into update
+    const originalUpdate = update;
+    update = function(dt) {
+      handlePlayerMovement();
+      originalUpdate(dt);
+    };
+
+    // Start / reset
+    startBtn.addEventListener('click', () => {
+      state.player.score = 0; state.ai.score = 0; updateScoreText();
+      state.running = true; state.serving = true; resetPositions(); state.lastTimestamp = 0;
+      infoText.textContent = 'Klaar — serveer! Space of Serve knop';
+    });
+
+    serveBtn.addEventListener('click', () => {
+      if (state.serving) serve(true);
+    });
+
+    // Auto scale canvas drawing buffer to device pixel ratio for crispness
+    function scaleForHiDPI() {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = Math.round(rect.width * dpr);
+      canvas.height = Math.round(rect.height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      // update state court dims
+      state.court.width = canvas.width;
+      state.court.height = canvas.height;
+      // reposition paddles & ball proportionally
+      resetPositions();
+    }
+
+    // Watch size and scale when mounted
+    const resizeObserver = new ResizeObserver(() => { scaleForHiDPI(); fitCanvas(); });
+    resizeObserver.observe(canvas);
+
+    // Initialize
+    updateScoreText();
+    resetPositions();
+    requestAnimationFrame(loop);
+
+  </script>
+</body>
+</html>
