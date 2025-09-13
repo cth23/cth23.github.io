@@ -1,36 +1,70 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Achtergrondkleur Veranderen</title>
-    <style>
-        body {
-            text-align: center;
-            padding-top: 50px;
-            font-family: Arial, sans-serif;
-            transition: background-color 0.5s; /* maakt de overgang vloeiend */
-        }
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Interactiepagina</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    margin-top: 50px;
+  }
+  #auto {
+    width: 50px;
+    position: absolute;
+    top: 200px;
+    left: 0;
+    transition: left 0.1s linear;
+  }
+  button {
+    margin: 10px;
+    padding: 10px 20px;
+    font-size: 16px;
+  }
+</style>
 </head>
 <body>
 
-    <h1>Klik op de knop om de achtergrondkleur te veranderen</h1>
-    <button onclick="veranderKleur()">Verander kleur</button>
+<h1>Interactieve Webpagina</h1>
 
-    <script>
-        const kleuren = ['#FF5733', '#33FF57', '#3357FF', '#F0E68C', '#FF69B4', '#40E0D0'];
-        
-        function veranderKleur() {
-            const randomIndex = Math.floor(Math.random() * kleuren.length);
-            document.body.style.backgroundColor = kleuren[randomIndex];
-        }
-    </script>
+<!-- Knop om achtergrondkleur te veranderen -->
+<button onclick="veranderKleur()">Verander achtergrondkleur</button>
+
+<!-- Knoppen om auto te besturen -->
+<button onclick="startAuto()">Start auto</button>
+<button onclick="stopAuto()">Stop auto</button>
+
+<!-- Autootje -->
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Red_car_icon.svg/1200px-Red_car_icon.svg.png" id="auto" alt="Auto">
+
+<script>
+  // Functie om achtergrondkleur te veranderen
+  function veranderKleur() {
+    const kleuren = ['lightblue', 'lightgreen', 'lightpink', 'lightyellow', 'orange', 'violet'];
+    const randomKleur = kleuren[Math.floor(Math.random() * kleuren.length)];
+    document.body.style.backgroundColor = randomKleur;
+  }
+
+  // Auto bewegen
+  let autoInterval = null;
+
+  function startAuto() {
+    const auto = document.getElementById('auto');
+    if (autoInterval) return; // voorkomt meerdere intervallen
+    autoInterval = setInterval(() => {
+      let left = parseInt(auto.style.left) || 0;
+      left += 5;
+      if (left > window.innerWidth) left = -50; // auto terug naar links
+      auto.style.left = left + 'px';
+    }, 50);
+  }
+
+  function stopAuto() {
+    clearInterval(autoInterval);
+    autoInterval = null;
+  }
+</script>
 
 </body>
 </html>
