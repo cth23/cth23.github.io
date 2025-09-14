@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>2 knoppen: Achtergrond & Optellen</title>
+  <style>
+    :root{ --bg:#f7f7fb; --card:#ffffff; --accent:#4f46e5 }
+    html,body{ height:100%; margin:0; font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:var(--bg); }
+    .wrap{ min-height:100%; display:flex; align-items:center; justify-content:center; padding:24px; box-sizing:border-box; transition:background 400ms ease; }
+    .card{ width:100%; max-width:520px; background:var(--card); border-radius:14px; box-shadow:0 8px 30px rgba(10,10,20,0.06); padding:28px; }
+    h1{ margin:0 0 12px 0; font-size:20px; }
+    p{ margin:0 0 18px 0; color:#444; }
+    .row{ display:flex; gap:12px; align-items:center; }
+    .inputs{ display:flex; gap:8px; margin-bottom:12px; }
+    input[type=number]{ width:120px; padding:10px 12px; border-radius:8px; border:1px solid #e6e7ee; font-size:14px; }
+    button{ padding:10px 14px; border-radius:10px; border:0; background:var(--accent); color:white; font-weight:600; cursor:pointer; box-shadow:0 6px 18px rgba(79,70,229,0.14); }
+    button.secondary{ background:transparent; color:var(--accent); border:1px solid rgba(79,70,229,0.18); box-shadow:none; }
+    .result{ margin-left:8px; font-weight:700; font-size:16px; }
+    footer{ margin-top:18px; color:#666; font-size:13px; }
+  </style>
+</head>
+<body>
+  <div class="wrap" id="pageWrap">
+    <div class="card" role="main">
+      <h1>Voorbeeld: 2 knoppen</h1>
+      <p>Knop 1 verandert de achtergrondkleur. Knop 2 telt twee getallen op die je invoert.</p>
+
+      <!-- Achtergrond kleur -->
+      <div style="margin-bottom:18px;">
+        <div class="row" style="justify-content:space-between;">
+          <div>
+            <strong>Achtergrondkleur</strong>
+            <div style="font-size:13px;color:#666;">Klik om een nieuwe, aangename kleur te kiezen</div>
+          </div>
+          <div class="row">
+            <button id="changeBgBtn">Verander achtergrond</button>
+            <button id="resetBgBtn" class="secondary" style="margin-left:8px;">Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Optellen -->
+      <div>
+        <strong>Optellen</strong>
+        <div style="font-size:13px;color:#666;margin-bottom:8px;">Voer twee getallen in en klik op 'Tel op'</div>
+
+        <div class="inputs">
+          <input type="number" id="num1" value="0" aria-label="Eerste getal" />
+          <input type="number" id="num2" value="0" aria-label="Tweede getal" />
+          <button id="addBtn">Tel op</button>
+          <span class="result" id="result">0</span>
+        </div>
+      </div>
+
+      <footer>Tip: gebruik getallen met decimalen (bijv. 1.5) als je dat wilt.</footer>
+    </div>
+  </div>
+
+  <script>
+    // Achtergrondkleur: kies aangename pastelachtige kleuren met HSL
+    const pageWrap = document.getElementById('pageWrap');
+    const changeBgBtn = document.getElementById('changeBgBtn');
+    const resetBgBtn = document.getElementById('resetBgBtn');
+
+    // bewaar originele achtergrond om te resetten
+    const originalBg = getComputedStyle(document.documentElement).getPropertyValue('--bg') || '#f7f7fb';
+
+    function randomPastel(){
+      // kies een hue 0-360, hoge lichtheid en lage tot matige verzadiging
+      const h = Math.floor(Math.random()*360);
+      const s = 55 + Math.floor(Math.random()*20); // 55-75%
+      const l = 85 + Math.floor(Math.random()*5);  // 85-90% licht
+      return `hsl(${h} ${s}% ${l}%)`;
+    }
+
+    changeBgBtn.addEventListener('click', ()=>{
+      const color = randomPastel();
+      // zet als inline background op .wrap zodat de overgang soepel is
+      pageWrap.style.background = color;
+    });
+
+    resetBgBtn.addEventListener('click', ()=>{
+      pageWrap.style.background = originalBg;
+    });
+
+    // Optellen
+    const num1 = document.getElementById('num1');
+    const num2 = document.getElementById('num2');
+    const addBtn = document.getElementById('addBtn');
+    const result = document.getElementById('result');
+
+    function parseNumber(value){
+      // parseFloat maar lege string = 0
+      if (value === null || value === '') return 0;
+      const n = parseFloat(value);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    addBtn.addEventListener('click', ()=>{
+      const a = parseNumber(num1.value);
+      const b = parseNumber(num2.value);
+      const sum = a + b;
+      // toon met maximaal 12 significante cijfers om rare floating bugs te beperken
+      result.textContent = Number.isInteger(sum) ? sum : parseFloat(sum.toPrecision(12));
+    });
+
+    // Enter-toets op de inputs ook optellen
+    [num1,num2].forEach(el => el.addEventListener('keydown', (e)=>{
+      if (e.key === 'Enter') addBtn.click();
+    }));
+  </script>
+</body>
+</html>
