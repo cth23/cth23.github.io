@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Pagina met 5 knoppen</title>
+  <style>
+    :root{ --bg:#f4f4f9; }
+    html,body{ height:100%; margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial; background:var(--bg); }
+    .container{ max-width:900px; margin:40px auto; padding:20px; background:rgba(255,255,255,0.9); border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,.08); }
+    h1{ margin:0 0 18px 0; font-size:20px; }
+    .controls{ display:flex; gap:12px; flex-wrap:wrap; }
+    button{ padding:10px 14px; border-radius:8px; border:1px solid #ddd; background:#fff; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.04); }
+    button:active{ transform:translateY(1px); }
+
+    /* Pig area */
+    .pig-area{ margin-top:22px; height:120px; position:relative; overflow:hidden; border-radius:10px; background:linear-gradient(180deg,#dff7ff, #ffffff); border:1px dashed rgba(0,0,0,.05); }
+    .pig{ position:absolute; top:50%; left:0; transform:translateY(-50%); font-size:56px; will-change:left; }
+    /* animation for running from left to right */
+    @keyframes runRight {
+      0%{ left:-20%; }
+      100%{ left:120%; }
+    }
+    .running{ animation: 4s linear infinite runRight; }
+
+    /* Simple form layout */
+    .math{ margin-top:18px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .math input{ width:120px; padding:8px; border-radius:6px; border:1px solid #ddd; }
+    .result{ margin-left:8px; font-weight:600; }
+
+    footer{ margin-top:18px; font-size:13px; color:#666; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Voorbeeldpagina — 5 knoppen</h1>
+
+    <div class="controls" role="group" aria-label="Hoofdknoppen">
+      <button id="btn-bg">Knop 1: verander achtergrondkleur</button>
+      <button id="btn-pig-start">Knop 2: biggetje laten lopen</button>
+      <button id="btn-pig-stop">Knop 2b: stoppen</button>
+      <button id="btn-add">Knop 3: tel twee getallen op</button>
+      <button id="btn-div">Knop 4: deel twee getallen</button>
+      <button id="btn-music">Knop 5: speel muziekje</button>
+    </div>
+
+    <div class="pig-area" aria-live="polite">
+      <div id="pig" class="pig" aria-hidden="true">🐖</div>
+    </div>
+
+    <div class="math">
+      <label for="a">A:</label>
+      <input id="a" type="number" value="8" />
+
+      <label for="b">B:</label>
+      <input id="b" type="number" value="2" />
+
+      <span class="result">Resultaat: <span id="result">—</span></span>
+    </div>
+
+    <footer>Tip: open de ontwikkelaarstools (F12) om eventuele fouten te zien.</footer>
+  </div>
+
+  <script>
+    // --- Achtergrondkleur veranderen (Knop 1) ---
+    const btnBg = document.getElementById('btn-bg');
+    const colors = ['#fef6e4','#fff0f6','#e8f7ff','#f0fff3','#fffef0','#f6f0ff','#fff'];
+    let colorIndex = 0;
+    btnBg.addEventListener('click', ()=>{
+      colorIndex = (colorIndex + 1) % colors.length;
+      // wijzig CSS root-variabele zodat body kleureffecten volgen
+      document.documentElement.style.setProperty('--bg', colors[colorIndex]);
+    });
+
+    // --- Biggetje lopen / stoppen (Knop 2 & 2b) ---
+    const pig = document.getElementById('pig');
+    const btnPigStart = document.getElementById('btn-pig-start');
+    const btnPigStop = document.getElementById('btn-pig-stop');
+    let wasRunning = false;
+
+    btnPigStart.addEventListener('click', ()=>{
+      // start animatie: als hij al loopt, versnellen we even
+      pig.classList.add('running');
+      // reset animation so it starts from left each time
+      pig.style.animationDuration = '4s';
+      wasRunning = true;
+    });
+
+    btnPigStop.addEventListener('click', ()=>{
+      // stoppen: verwijder de klasse en bewaar de huidige positie
+      if(!pig.classList.contains('running')) return;
+      // bereken huidige computed left en zet inline style zodat het blijft
+      const comp = window.getComputedStyle(pig);
+      const left = comp.getPropertyValue('left');
+      pig.classList.remove('running');
+      pig.style.left = left;
+      wasRunning = false;
+    });
+
+    // Zorg dat als animatie eindigt (loop) hij terugzet naar begin (visueel netter)
+    pig.addEventListener('animationiteration', ()=>{
+      // korte pauze tussen loops
+      pig.style.left = '-10%';
+    });
+
+    // --- Optellen (Knop 3) ---
+    const btnAdd = document.getElementById('btn-add');
+    const inputA = document.getElementById('a');
+    const inputB = document.getElementById('b');
+    const resultEl = document.getElementById('result');
+
+    btnAdd.addEventListener('click', ()=>{
+      const a = parseFloat(inputA.value);
+      const b = parseFloat(inputB.value);
+      if(Number.isNaN(a) || Number.isNaN(b)){
+        resultEl.textContent = 'Voer twee getallen in';
+        return;
+      }
+      const sum = a + b;
+      resultEl.textContent = sum;
+    });
+
+    // --- Delen (Knop 4) ---
+    const btnDiv = document.getElementById('btn-div');
+    btnDiv.addEventListener('click', ()=>{
+      const a = parseFloat(inputA.value);
+      const b = parseFloat(inputB.value);
+      if(Number.isNaN(a) || Number.isNaN(b)){
+        resultEl.textContent = 'Voer twee getallen in';
+        return;
+      }
+      if(b === 0){
+        resultEl.textContent = 'Kan niet delen door 0';
+        return;
+      }
+      const res = a / b;
+      // toon tot maximaal 6 decimalen, maar zonder onnodige nullen
+      resultEl.textContent = Number.isFinite(res) ? parseFloat(res.toFixed(6)).toString() : 'Ongeldig';
+    });
+
+    // --- Muziekje (Knop 5) met Web Audio API ---
+    const btnMusic = document.getElementById('btn-music');
+    let audioCtx = null;
+    let isPlaying = false;
+    let scheduled = [];
+
+    // Melodie: toonhoogtes (A4 = 440Hz) — eenvoudig deuntje
+    const melody = [440, 494, 523, 440, null, 523, 494, 440];
+    const durations = [0.35,0.35,0.5,0.5,0.2,0.35,0.35,0.7];
+
+    function playMelody(){
+      if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const now = audioCtx.currentTime + 0.05;
+      let t = now;
+      scheduled.forEach(node => node.stop()); // stop eventueel oude
+      scheduled = [];
+
+      melody.forEach((freq, i)=>{
+        const dur = durations[i] || 0.4;
+        if(freq === null){ t += dur; return; }
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(0.12, t + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start(t);
+        osc.stop(t + dur + 0.02);
+        scheduled.push(osc);
+        t += dur;
+      });
+    }
+
+    btnMusic.addEventListener('click', async ()=>{
+      // some browsers require a user gesture to resume audio context
+      if(!audioCtx){ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+      if(audioCtx.state === 'suspended'){
+        try{ await audioCtx.resume(); }catch(e){ console.warn('Audio resume failed', e); }
+      }
+      playMelody();
+    });
+
+    // Extra: keyboard shortcuts
+    document.addEventListener('keydown', (e)=>{
+      if(e.key === '1') btnBg.click();
+      if(e.key === '2') btnPigStart.click();
+      if(e.key === '3') btnAdd.click();
+      if(e.key === '4') btnDiv.click();
+      if(e.key === '5') btnMusic.click();
+    });
+  </script>
+</body>
+</html>
