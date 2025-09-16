@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Getallen delen</title>
+  <style>
+    :root{
+      --bg:#f6f8fb;
+      --card:#ffffff;
+      --accent:#2563eb;
+      --muted:#6b7280;
+      --danger:#dc2626;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    body{
+      margin:0;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:linear-gradient(180deg,var(--bg),#eef2ff);
+      padding:24px;
+    }
+    .card{
+      background:var(--card);
+      width:100%;
+      max-width:520px;
+      border-radius:12px;
+      box-shadow:0 6px 24px rgba(16,24,40,0.08);
+      padding:24px;
+    }
+    h1{ margin:0 0 8px 0; font-size:20px; }
+    p.lead{ margin:0 0 18px 0; color:var(--muted); font-size:14px; }
+    .row{ display:flex; gap:12px; margin-bottom:12px; }
+    label{ font-size:13px; color:var(--muted); display:block; margin-bottom:6px; }
+    input[type="number"]{
+      appearance:none;
+      -moz-appearance:textfield;
+      width:100%;
+      padding:10px 12px;
+      border:1px solid #e6e9ef;
+      border-radius:8px;
+      font-size:16px;
+    }
+    .controls{
+      display:flex;
+      gap:8px;
+      margin-top:8px;
+      align-items:center;
+    }
+    button{
+      padding:10px 14px;
+      border-radius:10px;
+      border:0;
+      cursor:pointer;
+      font-weight:600;
+      background:var(--accent);
+      color:white;
+      box-shadow:0 6px 12px rgba(37,99,235,0.12);
+    }
+    button.secondary{
+      background:transparent;
+      color:var(--accent);
+      border:1px solid #cfe0ff;
+      box-shadow:none;
+      font-weight:600;
+    }
+    .result{
+      margin-top:14px;
+      padding:12px;
+      border-radius:8px;
+      background:#f8fafc;
+      font-size:16px;
+      color:#111827;
+      min-height:44px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+    .error{ color:var(--danger); font-weight:600; }
+    .small{ font-size:13px; color:var(--muted); }
+    .muted-right{ color:var(--muted); font-size:13px; }
+  </style>
+</head>
+<body>
+  <main class="card" role="main">
+    <h1>Getallen delen</h1>
+    <p class="lead">Voer twee getallen in en klik op <strong>Deel</strong> om het resultaat te zien. Decimalen en negatieve getallen zijn toegestaan.</p>
+
+    <form id="divideForm" aria-describedby="instructions">
+      <div class="row">
+        <div style="flex:1;">
+          <label for="numerator">Teller (a)</label>
+          <input id="numerator" name="numerator" type="number" inputmode="decimal" step="any" placeholder="Bijv. 10.5" aria-label="Teller" required>
+        </div>
+        <div style="flex:1;">
+          <label for="denominator">Noemer (b)</label>
+          <input id="denominator" name="denominator" type="number" inputmode="decimal" step="any" placeholder="Bijv. 2" aria-label="Noemer" required>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button type="submit" id="divideBtn">Deel</button>
+        <button type="button" id="clearBtn" class="secondary">Wis</button>
+        <div class="muted-right" style="margin-left:auto;">Druk op Enter om te berekenen</div>
+      </div>
+
+      <div id="result" class="result" aria-live="polite" style="display:none;">
+        <div id="resultText"></div>
+        <div>
+          <button id="copyBtn" type="button" class="secondary" style="padding:6px 10px;">Kopieer</button>
+        </div>
+      </div>
+
+      <p id="instructions" class="small" style="margin-top:10px;">Opmerking: wanneer de noemer 0 is, wordt dat als ongeldig beschouwd.</p>
+    </form>
+  </main>
+
+  <script>
+    (function(){
+      const form = document.getElementById('divideForm');
+      const numeratorInput = document.getElementById('numerator');
+      const denominatorInput = document.getElementById('denominator');
+      const resultEl = document.getElementById('result');
+      const resultText = document.getElementById('resultText');
+      const copyBtn = document.getElementById('copyBtn');
+      const clearBtn = document.getElementById('clearBtn');
+
+      function formatNumber(n){
+        // Toon zoveel mogelijk precisie zonder onnodige nullen
+        if (!isFinite(n)) return String(n);
+        // Afhankelijk van grootte, kies notation
+        // We beperken ons tot maximaal 12 significante cijfers voor leesbaarheid
+        const abs = Math.abs(n);
+        if (abs !== 0 && (abs < 1e-6 || abs >= 1e12)) {
+          return n.toExponential(10).replace(/(?:\.0+|(\.\d+?)0+)e/, '$1e');
+        }
+        // Anders fix tot maximaal 12 significante cijfers
+        return Number.parseFloat(n.toPrecision(12)).toString();
+      }
+
+      function showResult(text, isError = false){
+        resultEl.style.display = 'flex';
+        resultText.textContent = text;
+        resultText.className = isError ? 'error' : '';
+      }
+
+      function compute(){
+        const aRaw = numeratorInput.value;
+        const bRaw = denominatorInput.value;
+
+        if (aRaw === '' || bRaw === '') {
+          showResult('Vul beide velden in.', true);
+          return;
+        }
+
+        const a = Number(aRaw);
+        const b = Number(bRaw);
+
+        if (!isFinite(a) || !isFinite(b)) {
+          showResult('Ongeldige invoer. Gebruik alleen numerieke waarden.', true);
+          return;
+        }
+
+        if (b === 0) {
+          showResult('Fout: delen door nul is niet toegestaan.', true);
+          return;
+        }
+
+        const quotient = a / b;
+        showResult(`Resultaat: ${formatNumber(quotient)} ( ${formatNumber(a)} ÷ ${formatNumber(b)} )`);
+      }
+
+      form.addEventListener('submit', function(ev){
+        ev.preventDefault();
+        compute();
+      });
+
+      // Enter werkt omdat het een form is — maar we bieden ook real-time optie:
+      numeratorInput.addEventListener('input', () => {
+        // optioneel: automatische berekening terwijl gebruiker typt
+        // commentaar verwijderen als je realtime wilt: compute();
+      });
+      denominatorInput.addEventListener('input', () => { /* compute(); */ });
+
+      copyBtn.addEventListener('click', function(){
+        const txt = resultText.textContent || '';
+        if (!txt) return;
+        navigator.clipboard?.writeText(txt).then(() => {
+          copyBtn.textContent = 'Gekopieerd!';
+          setTimeout(()=> copyBtn.textContent = 'Kopieer', 1200);
+        }).catch(()=> {
+          copyBtn.textContent = 'Kan niet kopiëren';
+          setTimeout(()=> copyBtn.textContent = 'Kopieer', 1200);
+        });
+      });
+
+      clearBtn.addEventListener('click', function(){
+        numeratorInput.value = '';
+        denominatorInput.value = '';
+        resultEl.style.display = 'none';
+        resultText.textContent = '';
+        numeratorInput.focus();
+      });
+
+      // Toegankelijkheid: focus op teller bij load
+      window.addEventListener('load', () => numeratorInput.focus());
+    })();
+  </script>
+</body>
+</html>
