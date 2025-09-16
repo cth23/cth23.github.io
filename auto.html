@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Auto laten rijden / stoppen</title>
+  <style>
+    :root{
+      --road-height: 160px;
+      --car-width: 140px;
+      --car-height: 70px;
+      --bg: linear-gradient(#87CEEB, #bfe9ff 60%);
+      --road-color: #2b2b2b;
+      --line-color: #ffd966;
+    }
+
+    html,body{
+      height:100%;
+      margin:0;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: var(--bg);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+      box-sizing:border-box;
+    }
+
+    .container{
+      width:100%;
+      max-width:960px;
+      background: rgba(255,255,255,0.5);
+      border-radius:14px;
+      box-shadow: 0 8px 30px rgba(2,10,30,0.15);
+      padding:20px;
+      backdrop-filter: blur(6px);
+    }
+
+    header {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:12px;
+    }
+
+    h1{
+      font-size:18px;
+      margin:0;
+      color:#102a43;
+    }
+    .controls{
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+
+    button#toggle{
+      appearance:none;
+      border:0;
+      background:#0b76ef;
+      color:white;
+      padding:10px 14px;
+      border-radius:10px;
+      font-weight:600;
+      cursor:pointer;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      box-shadow: 0 6px 16px rgba(11,118,239,0.24);
+    }
+    button#toggle:active{ transform: translateY(1px); }
+    button#toggle[aria-pressed="true"]{ background:#e03b3b; box-shadow: 0 6px 16px rgba(224,59,59,0.22); }
+
+    label{
+      font-size:14px;
+      color:#123;
+    }
+
+    .play-area{
+      width:100%;
+      height:320px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      position:relative;
+      overflow:hidden;
+      border-radius:10px;
+      background: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.03));
+      padding:18px;
+      box-sizing:border-box;
+    }
+
+    /* weg-styling */
+    .road {
+      position:absolute;
+      left:0;
+      right:0;
+      bottom:18px;
+      height:var(--road-height);
+      background: repeating-linear-gradient(
+        to bottom,
+        var(--road-color) 0 60%,
+        #1f1f1f 60% 100%
+      );
+      border-radius:8px;
+      box-shadow: inset 0 8px 18px rgba(0,0,0,0.25);
+    }
+
+    /* middellijn */
+    .road::before{
+      content:"";
+      position:absolute;
+      left:0;
+      right:0;
+      top:50%;
+      height:6px;
+      transform:translateY(-50%);
+      background: repeating-linear-gradient(
+        to right,
+        transparent 0 24px,
+        var(--line-color) 24px 36px
+      );
+      opacity:0.95;
+    }
+
+    /* parkeerstrook/gras boven de weg */
+    .skystrip{
+      position:absolute;
+      left:0;
+      right:0;
+      top:18px;
+      height:90px;
+      pointer-events:none;
+    }
+
+    /* de auto (SVG wrapper) */
+    .car {
+      position:absolute;
+      bottom: 18px;
+      width: var(--car-width);
+      height: var(--car-height);
+      transform-origin: left center;
+      will-change: transform;
+      filter: drop-shadow(0 6px 10px rgba(0,0,0,0.25));
+    }
+
+    /* snelheidsindicator */
+    .info {
+      margin-top:12px;
+      display:flex;
+      gap:12px;
+      align-items:center;
+      color:#083344;
+      font-weight:600;
+    }
+
+    input[type="range"]{
+      width:160px;
+    }
+
+    /* responsive */
+    @media (max-width:520px){
+      :root { --car-width: 110px; --car-height:56px; --road-height:120px; }
+      .container{ padding:12px; }
+      h1{ font-size:16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container" role="main">
+    <header>
+      <h1>Auto: rijden ↔ stoppen</h1>
+
+      <div class="controls" aria-hidden="false">
+        <label for="speed">Snelheid</label>
+        <input id="speed" type="range" min="20" max="700" value="220" aria-label="Snelheid van de auto (lager = langzamer)" />
+        <button id="toggle" aria-pressed="false" title="Spatiebar togglet ook">Rijden</button>
+      </div>
+    </header>
+
+    <div class="play-area" id="playArea" aria-label="Speelveld met weg en auto">
+      <div class="skystrip" aria-hidden="true"></div>
+
+      <!-- auto als inline SVG, makkelijk aan te passen -->
+      <div id="car" class="car" role="img" aria-label="Rode auto">
+        <svg viewBox="0 0 320 160" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <!-- body -->
+          <rect x="18" y="44" width="220" height="58" rx="14" fill="#d43b3b"/>
+          <path d="M18 44 L48 16 L180 16 L220 44 Z" fill="#d43b3b"/>
+          <!-- raam -->
+          <path d="M70 28 L150 28 L170 44 L90 44 Z" fill="#bfe8ff"/>
+          <!-- bumpers -->
+          <rect x="0" y="84" width="20" height="16" rx="4" fill="#333"/>
+          <rect x="238" y="84" width="82" height="16" rx="4" fill="#333"/>
+          <!-- wielen -->
+          <g transform="translate(56,110)">
+            <circle cx="0" cy="0" r="22" fill="#222" />
+            <circle cx="0" cy="0" r="10" fill="#9aa" />
+          </g>
+          <g transform="translate(206,110)">
+            <circle cx="0" cy="0" r="22" fill="#222" />
+            <circle cx="0" cy="0" r="10" fill="#9aa" />
+          </g>
+          <!-- koplampen -->
+          <circle cx="250" cy="66" r="8" fill="#fff2c7" opacity="0.95"/>
+        </svg>
+      </div>
+
+      <div class="road" aria-hidden="true"></div>
+    </div>
+
+    <div class="info" id="infoBar" aria-live="polite">
+      <div id="stateText">Status: <strong id="status">Gestopt</strong></div>
+      <div id="speedText">Snelheid: <strong id="speedValue">220</strong> px/s</div>
+    </div>
+  </div>
+
+  <script>
+    // Nederlandse variabelen en uitleg in comments
+    const car = document.getElementById('car');
+    const toggleBtn = document.getElementById('toggle');
+    const speedRange = document.getElementById('speed');
+    const statusEl = document.getElementById('status');
+    const speedValueEl = document.getElementById('speedValue');
+    const playArea = document.getElementById('playArea');
+
+    // staat en positie
+    let running = false;
+    let lastTs = null;
+    // positie in pixels vanaf linkerkant van playArea
+    let x = 0;
+
+    // De effectieve breedte waar de auto overheen kan rijden:
+    function getTrackWidth() {
+      // totale inhoudsbreedte minus auto-breedte - een kleine marge
+      const areaRect = playArea.getBoundingClientRect();
+      const carRect = car.getBoundingClientRect();
+      return Math.max(10, areaRect.width - carRect.width - 12);
+    }
+
+    // update UI
+    function updateUI() {
+      toggleBtn.setAttribute('aria-pressed', running ? 'true' : 'false');
+      toggleBtn.textContent = running ? 'Stoppen' : 'Rijden';
+      statusEl.textContent = running ? 'Rijdend' : 'Gestopt';
+      speedValueEl.textContent = speedRange.value;
+    }
+
+    // togglet status (en toegankelijk via toetsenbord)
+    function toggleRunning() {
+      running = !running;
+      if (!running) {
+        // wanneer stop, reset last timestamp zodat sprongen voorkomen
+        lastTs = null;
+      }
+      updateUI();
+    }
+
+    toggleBtn.addEventListener('click', () => {
+      toggleRunning();
+    });
+
+    // spatie togglet ook
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' || e.key === ' ') {
+        e.preventDefault();
+        toggleRunning();
+      }
+    });
+
+    // update snelheid
+    speedRange.addEventListener('input', () => {
+      speedValueEl.textContent = speedRange.value;
+    });
+
+    // animatielus met requestAnimationFrame
+    function rafStep(ts) {
+      if (!lastTs) lastTs = ts;
+      const dt = (ts - lastTs) / 1000; // seconden sinds vorige frame
+      lastTs = ts;
+
+      if (running) {
+        // snelheid in pixels per seconde - groter = sneller
+        const speed = Number(speedRange.value); // px/s
+        x += speed * dt;
+
+        const track = getTrackWidth();
+        if (x > track) {
+          // zodra de auto voorbij het einde gaat, wrap naar links (vloeiend)
+          x = - (Math.random() * 80); // kleine random offset voor variatie
+        }
+
+        // lichte kanteling bij snelheid
+        const tilt = Math.min(8, (speed / 200));
+        car.style.transform = `translateX(${x}px) rotate(${tilt}deg)`;
+      } else {
+        // sta stil zonder jitter: houd transformatie alleen translation
+        car.style.transform = `translateX(${x}px) rotate(0deg)`;
+      }
+
+      // volgende frame
+      requestAnimationFrame(rafStep);
+    }
+
+    // start animation loop
+    requestAnimationFrame(rafStep);
+
+    // initialisatie: plaats de auto buiten beeld links zodat hij "inrijdt"
+    function initPosition() {
+      x = -80;
+      updateUI();
+      // zet positie direct (zonder animatie)
+      car.style.transform = `translateX(${x}px)`;
+    }
+
+    // wanneer venstergrootte verandert, corrigeer track en behoud x binnen grenzen
+    window.addEventListener('resize', () => {
+      const track = getTrackWidth();
+      if (x > track) x = track;
+    });
+
+    // init
+    initPosition();
+  </script>
+</body>
+</html>
