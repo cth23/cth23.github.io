@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Getallen vermenigvuldigen</title>
+  <style>
+    :root {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      color-scheme: light dark;
+    }
+    body {
+      display: grid;
+      place-items: center;
+      min-height: 100vh;
+      margin: 0;
+      background: linear-gradient(180deg,#f7f9fc,#eef4fb);
+      padding: 24px;
+    }
+    .card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 8px 30px rgba(20,30,60,0.08);
+      padding: 24px;
+      max-width: 420px;
+      width: 100%;
+    }
+    h1 { margin: 0 0 12px; font-size: 1.25rem; }
+    label { display:block; font-size:0.9rem; margin-top:10px; }
+    input[type="number"] {
+      width: 100%;
+      padding: 10px;
+      margin-top:6px;
+      box-sizing: border-box;
+      border: 1px solid #d6e0ef;
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+    .buttons {
+      display:flex;
+      gap:10px;
+      margin-top:14px;
+    }
+    button {
+      flex: 1;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+      background: linear-gradient(180deg,#2d7ef6,#155ed6);
+      color: white;
+    }
+    button.secondary {
+      background: linear-gradient(180deg,#6b7280,#4b5563);
+    }
+    .result {
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 8px;
+      background: #f3f6fb;
+      border: 1px dashed #dce8fb;
+      font-weight: 600;
+    }
+    .hint { font-size:0.85rem; color:#555; margin-top:8px; }
+  </style>
+</head>
+<body>
+  <main class="card" role="main">
+    <h1>Getallen vermenigvuldigen</h1>
+
+    <label for="num1">Getal 1</label>
+    <input id="num1" type="number" step="any" inputmode="decimal" placeholder="Bijv. 2.5">
+
+    <label for="num2">Getal 2</label>
+    <input id="num2" type="number" step="any" inputmode="decimal" placeholder="Bijv. 4">
+
+    <div class="buttons" role="group" aria-label="Vermenigvuldig knoppen">
+      <button id="multiplyBtn" title="Toon product">Vermenigvuldig</button>
+      <button id="multiplyCopyBtn" class="secondary" title="Vermenigvuldig en kopieer resultaat">Vermenigvuldig & kopieer</button>
+    </div>
+
+    <div id="output" class="result" aria-live="polite">Resultaat verschijnt hier</div>
+    <div class="hint">Gebruik de eerste knop om het product te tonen. De tweede knop kopieert het product direct naar je klembord.</div>
+  </main>
+
+  <script>
+    // Helpers
+    const $ = id => document.getElementById(id);
+    const fmt = n => {
+      // Formatteer resultaat netjes volgens Nederlandse notatie
+      try { return Number.isFinite(n) ? n.toLocaleString('nl-NL') : String(n); }
+      catch(e){ return String(n); }
+    };
+
+    function readNumbers() {
+      const a = parseFloat($('num1').value);
+      const b = parseFloat($('num2').value);
+      return { a, b, valid: !isNaN(a) && !isNaN(b) };
+    }
+
+    function showMessage(msg, isError = false) {
+      const out = $('output');
+      out.textContent = msg;
+      out.style.borderColor = isError ? '#ffd4d4' : '#dce8fb';
+      out.style.background = isError ? '#fff2f2' : '#f3f6fb';
+    }
+
+    // Event handlers
+    $('multiplyBtn').addEventListener('click', () => {
+      const { a, b, valid } = readNumbers();
+      if (!valid) {
+        showMessage('Vul twee geldige getallen in.', true);
+        return;
+      }
+      const product = a * b;
+      showMessage('Product: ' + fmt(product));
+    });
+
+    $('multiplyCopyBtn').addEventListener('click', async () => {
+      const { a, b, valid } = readNumbers();
+      if (!valid) {
+        showMessage('Vul twee geldige getallen in.', true);
+        return;
+      }
+      const product = a * b;
+      showMessage('Product: ' + fmt(product));
+      // Probeer te kopiëren naar klembord (kan om toestemming vragen in sommige browsers)
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(String(product));
+          // kleine bevestiging
+          showMessage('Product gekopieerd: ' + fmt(product));
+        } else {
+          // Fallback: Selecteer en probeer document.execCommand (oud)
+          const ta = document.createElement('textarea');
+          ta.value = String(product);
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          ta.remove();
+          showMessage('Product gekopieerd (fallback): ' +
