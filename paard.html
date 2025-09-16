@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Paard laten lopen / stoppen</title>
+<style>
+  :root{
+    --track-height: 160px;
+    --horse-size: 96px;
+    --duration: 6s; /* tijd voor één heen-en-weer */
+  }
+
+  body{
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    display: flex;
+    min-height: 100vh;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    background: linear-gradient(#e6f7ff, #fff);
+    color: #0b2545;
+  }
+
+  .container{
+    width: min(980px, 95vw);
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 10px 30px rgba(8,20,40,0.12);
+  }
+
+  h1{
+    margin: 0 0 12px 0;
+    font-size: 1.25rem;
+  }
+
+  .controls{
+    display:flex;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+
+  button{
+    font-size: 1rem;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(11,37,69,0.12);
+    background: linear-gradient(#fff,#f6fbff);
+    cursor: pointer;
+    box-shadow: 0 2px 0 rgba(11,37,69,0.03);
+  }
+  button:active{ transform: translateY(1px); }
+  button:disabled{
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Track where the horse runs */
+  .track{
+    position: relative;
+    height: var(--track-height);
+    border-radius: 10px;
+    overflow: hidden;
+    background:
+      linear-gradient(transparent 0 65%, rgba(0,0,0,0.03) 65% 100%),
+      linear-gradient(90deg, rgba(34,197,94,0.06), rgba(59,130,246,0.02));
+    border: 1px solid rgba(11,37,69,0.04);
+    display: flex;
+    align-items: center;
+  }
+
+  /* Horse element (we use emoji) */
+  .horse{
+    position: absolute;
+    left: -12%;
+    bottom: 14px; /* visually above the baseline */
+    font-size: var(--horse-size);
+    will-change: transform;
+    transform-origin: center bottom;
+    /* start paused */
+    animation-play-state: paused;
+  }
+
+  /* translate across the track: left -> right -> left (infinite) */
+  @keyframes runAcross {
+    0%   { transform: translateX(-20%) translateY(0) scaleX(1); }
+    45%  { transform: translateX(120%) translateY(0) scaleX(1); }
+    50%  { transform: translateX(120%) translateY(0) scaleX(-1); } /* flip horizontally at far end */
+    95%  { transform: translateX(-20%) translateY(0) scaleX(-1); }
+    100% { transform: translateX(-20%) translateY(0) scaleX(1); }
+  }
+
+  /* small up-down to simulate steps */
+  @keyframes gallop {
+    0%   { transform: translateY(0); }
+    25%  { transform: translateY(-8px); }
+    50%  { transform: translateY(0); }
+    75%  { transform: translateY(-6px); }
+    100% { transform: translateY(0); }
+  }
+
+  /* When running, combine animations: main translate + small bob.
+     We keep animations separated by layering via a wrapper to keep transforms isolated. */
+  .horse.running{
+    animation: runAcross var(--duration) linear infinite;
+    animation-play-state: running;
+  }
+
+  .bob-wrapper{
+    display:inline-block;
+    will-change: transform;
+    animation-play-state: paused;
+  }
+  .bob-wrapper.running{
+    animation: gallop 0.6s steps(4) infinite;
+    animation-play-state: running;
+  }
+
+  /* ground shadow to make movement feel grounded */
+  .shadow{
+    position: absolute;
+    width: calc(var(--horse-size) * 0.9);
+    height: 10px;
+    bottom: 6px;
+    left: 0;
+    margin-left: calc(var(--horse-size) * -0.15);
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0.18), rgba(0,0,0,0.02));
+    filter: blur(4px);
+    transform-origin: center;
+    opacity: 0.85;
+    will-change: transform, opacity;
+    animation-play-state: paused;
+  }
+  .shadow.running{
+    animation: runAcross var(--duration) linear infinite, shadowPulse 0.6s steps(4) infinite;
+    animation-play-state: running;
+  }
+  @keyframes shadowPulse {
+    0%   { transform: scaleX(1) translateY(0); opacity: 0.9; }
+    50%  { transform: scaleX(0.9) translateY(0); opacity: 0.7; }
+    100% { transform: scaleX(1) translateY(0); opacity: 0.9; }
+  }
+
+  /* responsive */
+  @media (max-width:420px){
+    :root{ --horse-size: 64px; --track-height: 120px; --duration: 5s; }
+    .container{ padding: 14px; }
+  }
+</style>
+</head>
+<body>
+  <main class="container" role="main">
+    <h1>Paard laten lopen</h1>
+
+    <div class="controls" role="region" aria-label="Besturing paard">
+      <button id="startBtn" aria-controls="track" aria-pressed="false">Loop</button>
+      <button id="stopBtn" aria-controls="track" aria-pressed="true" disabled>Stop</button>
+    </div>
+
+    <div id="track" class="track" aria-live="polite">
+      <!-- We wrap the emoji so we can animate translate separately -->
+      <div id="horse" class="horse" aria-hidden="false" title="Paard">
+        <span id="bob" class="bob-wrapper">
+          🐴
+        </span>
+      </div>
+      <div id="shadow" class="shadow" aria-hidden="true"></div>
+    </div>
+
+    <p style="margin-top:12px; font-size:0.95rem; color: #445e78;">
+      Gebruik de knoppen of toets <kbd>Enter</kbd> (Loop) / <kbd>Space</kbd> (Stop).
+    </p>
+  </main>
+
+<script>
+  const startBtn = document.getElementById('startBtn');
+  const stopBtn  = document.getElementById('stopBtn');
+  const horse    = document.getElementById('horse');
+  const bob      = document.getElementById('bob');
+  const shadow   = document.getElementById('shadow');
+
+  // Keep a boolean state
+  let isRunning = false;
+
+  function updateButtons(){
+    startBtn.disabled = isRunning;
+    stopBtn.disabled = !isRunning;
+    startBtn.setAttribute('aria-pressed', String(isRunning));
+    stopBtn.setAttribute('aria-pressed', String(!isRunning));
+  }
+
+  function startRunning(){
+    if (isRunning) return;
+    isRunning = true;
+    // add running classes
+    horse.classList.add('running');
+    bob.classList.add('running');
+    shadow.classList.add('running');
+    updateButtons();
+  }
+
+  function stopRunning(){
+    if (!isRunning) return;
+    isRunning = false;
+    // remove running classes -> animations paused by removing class
+    horse.classList.remove('running');
+    bob.classList.remove('running');
+    shadow.classList.remove('running');
+    updateButtons();
+  }
+
+  // Buttons
+  startBtn.addEventListener('click', startRunning);
+  stopBtn.addEventListener('click', stopRunning);
+
+  // Keyboard shortcuts
+  window.addEventListener('keydown', (e) => {
+    // Enter to start, Space to stop (only when target is body or track)
+    // allow normal typing in inputs (not present here) but safe-check anyway
+    const active = document.activeElement;
+    const tag = active && active.tagName ? active.tagName.toLowerCase() : '';
+    if (tag === 'input' || tag === 'textarea' || active.isContentEditable) return;
+
+    if (e.key === 'Enter') {
+      startRunning();
+    } else if (e.key === ' ' || e.code === 'Space') {
+      // prevent page scroll when space pressed
+      e.preventDefault();
+      stopRunning();
+    }
+  });
+
+  // Make sure initial button state is correct
+  updateButtons();
+
+  // Optional: When the page gets hidden, pause (good UX)
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && isRunning) {
+      // pause visually by stopping classes but keep state so user can resume
+      horse.classList.remove('running');
+      bob.classList.remove('running');
+      shadow.classList.remove('running');
+    } else if (!document.hidden && isRunning) {
+      horse.classList.add('running');
+      bob.classList.add('running');
+      shadow.classList.add('running');
+    }
+  });
+</script>
+</body>
+</html>
