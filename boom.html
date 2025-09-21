@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Drie bomen</title>
+  <style>
+    :root{--bg:#e9f5f1;--card:#ffffff;--accent: #2b7a4b}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:linear-gradient(180deg,var(--bg),#dff0ea);color:#0b2b1f;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:3rem}
+    .wrap{width:100%;max-width:980px;background:var(--card);border-radius:14px;padding:2rem;box-shadow:0 10px 30px rgba(11,43,31,0.08)}
+    h1{margin:0 0 1rem;font-size:1.5rem}
+    p.lead{margin:0 0 1.5rem;color:#21533e}
+    .trees{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1.5rem;align-items:end}
+    figure{background:linear-gradient(180deg,rgba(43,122,75,0.03),transparent);padding:1rem;border-radius:12px;display:flex;flex-direction:column;align-items:center;gap:.75rem;}
+    figcaption{font-size:.95rem}
+    /* subtle shadow for each tree */
+    svg{width:100%;height:auto;max-width:260px;display:block}
+    .trunk{fill:#8b5a2b}
+    .leaf{transform-origin:center bottom}
+    /* small gentle sway animation */
+    @keyframes swayA{0%{transform:rotate(-1deg)}50%{transform:rotate(1deg)}100%{transform:rotate(-1deg)}}
+    @keyframes swayB{0%{transform:translateX(0)}50%{transform:translateX(4px)}100%{transform:translateX(0)}}
+    .sway-slow{animation:swayA 6s ease-in-out infinite}
+    .sway-gentle{animation:swayB 5s ease-in-out infinite}
+    /* small responsive tweaks */
+    @media (max-width:520px){body{padding:1rem}.wrap{padding:1rem}h1{font-size:1.15rem}}
+  </style>
+</head>
+<body>
+  <main class="wrap" role="main">
+    <h1>Drie bomen</h1>
+    <p class="lead">Voorbeeldpagina met drie verschillende bomen (SVG) — hover voor subtiele interactie.</p>
+
+    <section class="trees" aria-label="Drie bomen">
+
+      <figure>
+        <!-- Boom 1: klassiek kroon-boom -->
+        <svg viewBox="0 0 200 240" role="img" aria-labelledby="t1">
+          <title id="t1">Groene boom met volle kroon</title>
+          <!-- grondschaduw -->
+          <ellipse cx="100" cy="230" rx="60" ry="8" fill="rgba(11,43,31,0.06)"/>
+          <!-- kroon -->
+          <g class="leaf sway-slow" aria-hidden="true">
+            <ellipse cx="100" cy="90" rx="64" ry="52" fill="#2b7a4b"/>
+            <ellipse cx="70" cy="120" rx="48" ry="38" fill="#2e8c52"/>
+            <ellipse cx="130" cy="120" rx="48" ry="38" fill="#267a47"/>
+          </g>
+          <!-- stam -->
+          <rect x="88" y="130" width="24" height="80" rx="6" class="trunk"/>
+        </svg>
+        <figcaption>Boom 1 — volle kroon</figcaption>
+      </figure>
+
+      <figure>
+        <!-- Boom 2: dennen-achtige -->
+        <svg viewBox="0 0 200 240" role="img" aria-labelledby="t2">
+          <title id="t2">Spar-achtige boom</title>
+          <ellipse cx="100" cy="230" rx="56" ry="8" fill="rgba(11,43,31,0.06)"/>
+          <!-- lagen -->
+          <g class="sway-gentle" aria-hidden="true">
+            <polygon points="100,30 40,110 160,110" fill="#1f7a4a" />
+            <polygon points="100,70 50,140 150,140" fill="#24905a" />
+            <polygon points="100,110 60,170 140,170" fill="#1f6f44" />
+          </g>
+          <rect x="92" y="170" width="16" height="60" rx="4" class="trunk"/>
+        </svg>
+        <figcaption>Boom 2 — denvorm</figcaption>
+      </figure>
+
+      <figure>
+        <!-- Boom 3: gestileerd met losse bladeren -->
+        <svg viewBox="0 0 200 240" role="img" aria-labelledby="t3">
+          <title id="t3">Gestileerde boom met losse bladeren</title>
+          <ellipse cx="100" cy="230" rx="60" ry="8" fill="rgba(11,43,31,0.06)"/>
+          <!-- losse bladeren als cirkels -->
+          <g class="leaf" aria-hidden="true">
+            <circle cx="80" cy="90" r="22" fill="#57a05f"/>
+            <circle cx="115" cy="80" r="18" fill="#2f8a4f"/>
+            <circle cx="135" cy="115" r="20" fill="#4fa36a"/>
+            <circle cx="70" cy="120" r="16" fill="#2e7b4a"/>
+            <circle cx="100" cy="100" r="24" fill="#3da268"/>
+          </g>
+          <rect x="90" y="140" width="20" height="90" rx="6" class="trunk"/>
+        </svg>
+        <figcaption>Boom 3 — gestileerd</figcaption>
+      </figure>
+
+    </section>
+
+    <p style="margin-top:1.25rem;font-size:.9rem;color:#355d47">Tip: kopieer de pagina en pas kleuren of vormen aan in de SVG's om eigen variaties te maken.</p>
+  </main>
+
+  <script>
+    // kleine interacties: vergroot kroon op hover
+    document.querySelectorAll('figure').forEach(fig => {
+      const g = fig.querySelector('g.leaf');
+      if(!g) return;
+      fig.addEventListener('mouseenter', () => {
+        g.style.transition = 'transform 260ms ease';
+        g.style.transform = 'scale(1.045)';
+      });
+      fig.addEventListener('mouseleave', () => {
+        g.style.transform = '';
+      });
+    });
+  </script>
+</body>
+</html>
