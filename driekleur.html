@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Achtergrond in drie banden</title>
+  <style>
+    /* Basis styling */
+    :root{
+      --gap: 0; /* ruimte tussen banden, wijzig naar bijv. 4px voor scheiding */
+    }
+    html,body{
+      height:100%;
+      margin:0;
+      font-family:system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
+      background: linear-gradient(180deg,#f3f4f6,#e5e7eb); /* fallback look */
+    }
+
+    .page{
+      min-height:100vh;
+      display:grid;
+      place-items:center;
+      position:relative;
+      overflow:hidden;
+    }
+
+    /* De drie banden: fixed zodat ze altijd het scherm vullen */
+    .banden{
+      position:fixed;
+      inset:0; /* top/right/bottom/left: 0 */
+      display:flex;
+      flex-direction:column;
+      pointer-events:none; /* klikken doorlaten naar de knop */
+      transition:opacity .35s ease;
+    }
+
+    .band{
+      flex:1 1 33.333%;
+      min-height:0;
+      width:100%;
+      box-sizing:border-box;
+      margin:var(--gap);
+    }
+
+    /* Verborgen standaard (éénkleur achtergrond blijft zichtbaar) */
+    .banden.hidden{opacity:0; visibility:hidden}
+
+    /* Knop-styling */
+    .controls{
+      position:relative; /* bovenop de banden */
+      z-index:10;
+      display:flex;
+      gap:.5rem;
+      background:rgba(255,255,255,0.65);
+      padding:.6rem .8rem;
+      border-radius:12px;
+      box-shadow:0 6px 20px rgba(0,0,0,0.08);
+      backdrop-filter: blur(6px);
+      align-items:center;
+    }
+
+    button{
+      appearance:none;
+      border:0;
+      padding:.45rem .75rem;
+      border-radius:8px;
+      font-weight:600;
+      cursor:pointer;
+      background:#111827;
+      color:#fff;
+    }
+
+    button.secondary{
+      background:transparent;
+      color:#111827;
+      border:1px solid rgba(0,0,0,0.08);
+    }
+
+    .label{font-size:.95rem}
+
+    /* Kleine responsive verbetering */
+    @media (max-width:420px){
+      .controls{padding:.4rem .6rem}
+      button{padding:.4rem .6rem}
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <!-- De drie banden. Start verborgen zodat de body-achtergrond zichtbaar blijft. -->
+    <div id="banden" class="banden hidden" aria-hidden="true">
+      <div id="band1" class="band" style="background:#ffadad"></div>
+      <div id="band2" class="band" style="background:#ffd6a5"></div>
+      <div id="band3" class="band" style="background:#caffbf"></div>
+    </div>
+
+    <!-- Controls bovenop de banden -->
+    <div class="controls" role="region" aria-label="Achtergrond besturing">
+      <div class="label">Achtergrond:</div>
+      <button id="toggle">Toon 3 banden</button>
+      <button id="random" class="secondary">Willekeurige kleuren</button>
+      <button id="reset" class="secondary">Reset</button>
+    </div>
+  </main>
+
+  <script>
+    // Eenvoudige helper: genereer een hex kleur
+    function randHex(){
+      return '#'+Math.floor(Math.random()*16777215).toString(16).padStart(6,'0');
+    }
+
+    const banden = document.getElementById('banden');
+    const toggle = document.getElementById('toggle');
+    const randomBtn = document.getElementById('random');
+    const resetBtn = document.getElementById('reset');
+    const band1 = document.getElementById('band1');
+    const band2 = document.getElementById('band2');
+    const band3 = document.getElementById('band3');
+
+    // Vastleggen originele body-achtergrond zodat we kunnen resetten
+    const originalBodyBg = getComputedStyle(document.body).backgroundColor;
+    const originalBands = [band1.style.background, band2.style.background, band3.style.background];
+
+    let visible = false;
+
+    function showBands(){
+      banden.classList.remove('hidden');
+      banden.setAttribute('aria-hidden','false');
+      toggle.textContent = 'Verberg banden';
+      visible = true;
+    }
+
+    function hideBands(){
+      banden.classList.add('hidden');
+      banden.setAttribute('aria-hidden','true');
+      toggle.textContent = 'Toon 3 banden';
+      visible = false;
+    }
+
+    toggle.addEventListener('click', ()=>{
+      if(visible) hideBands(); else showBands();
+    });
+
+    randomBtn.addEventListener('click', ()=>{
+      band1.style.background = randHex();
+      band2.style.background = randHex();
+      band3.style.background = randHex();
+      showBands();
+    });
+
+    resetBtn.addEventListener('click', ()=>{
+      band1.style.background = originalBands[0];
+      band2.style.background = originalBands[1];
+      band3.style.background = originalBands[2];
+      hideBands();
+      document.body.style.background = '';
+    });
+
+    // Laat de banden tonen wanneer de gebruiker 't' indrukt (handig voor demo)
+    document.addEventListener('keydown', (e)=>{
+      if(e.key.toLowerCase()==='t'){
+        toggle.click();
+      }
+    });
+
+    // Optioneel: pas gap aan wanneer de gebruiker met de muis scrolt (voorbeeld van interactie)
+    // (niet noodzakelijk — laat commented voor duidelijkheid)
+    // window.addEventListener('wheel', e => {
+    //   document.documentElement.style.setProperty('--gap', Math.min(Math.abs(e.deltaY)/50, 8)+'px');
+    // });
+  </script>
+</body>
+</html>
