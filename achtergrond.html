@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Achtergrond kleur wisselen</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding-top: 50px;
+      transition: background-color 0.5s ease;
+    }
+    button {
+      font-size: 18px;
+      padding: 10px 20px;
+      margin: 10px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .rood {
+      background-color: #ff4d4d;
+      color: white;
+    }
+    .blauw {
+      background-color: #4da6ff;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <h1>Kies een achtergrondkleur</h1>
+  <button class="rood" onclick="document.body.style.backgroundColor='lightcoral'">Rood</button>
+  <button class="blauw" onclick="document.body.style.backgroundColor='lightblue'">Blauw</button>
+</body>
+</html>
