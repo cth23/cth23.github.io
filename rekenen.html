@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Eenvoudige rekenmachine</title>
+  <style>
+    :root{
+      --bg:#0f1724; /* dark navy */
+      --card:#0b1220;
+      --accent:#7c3aed; /* purple */
+      --muted:#94a3b8;
+      --glass: rgba(255,255,255,0.03);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background:linear-gradient(180deg,var(--bg), #071127 120%);
+      color:#e6eef8;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:32px;
+    }
+    .card{
+      background:linear-gradient(180deg,var(--card), rgba(11,18,32,0.85));
+      border-radius:16px;
+      box-shadow:0 10px 30px rgba(2,6,23,0.6);
+      padding:22px;
+      width:100%;
+      max-width:420px;
+      backdrop-filter: blur(6px);
+    }
+    .title{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+    .logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#5b21b6);display:flex;align-items:center;justify-content:center;font-weight:700}
+    h1{font-size:18px;margin:0}
+    p.subtitle{margin:0;color:var(--muted);font-size:13px}
+
+    .display{
+      background:var(--glass);
+      border-radius:10px;
+      padding:12px 14px;
+      margin-top:14px;
+      min-height:60px;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      align-items:flex-end;
+      gap:4px;
+      word-break:break-all;
+    }
+    .display .small{font-size:13px;color:var(--muted)}
+    .display .main{font-size:28px;font-weight:600}
+
+    .keys{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:10px;
+      margin-top:16px;
+    }
+    button.key{
+      padding:14px 10px;border-radius:10px;border:0;font-size:17px;font-weight:600;cursor:pointer;background:transparent;color:inherit;
+      box-shadow:inset 0 -2px 0 rgba(255,255,255,0.02);
+      transition:transform .08s ease, box-shadow .08s ease, background .12s ease;
+    }
+    button.key:active{transform:translateY(2px)}
+    button.op{background:linear-gradient(180deg, rgba(124,58,237,0.18), rgba(91,33,182,0.12));color:var(--accent);}
+    button.equal{grid-column:span 2;background:var(--accent);color:white;border-radius:10px;}
+    button.clear{background:rgba(255,255,255,0.03);color:var(--muted)}
+    button.wide{grid-column:span 2}
+
+    @media (max-width:420px){
+      .card{padding:16px}
+      .display .main{font-size:22px}
+    }
+  </style>
+</head>
+<body>
+  <main class="card" role="application" aria-label="Eenvoudige rekenmachine">
+    <div class="title">
+      <div class="logo">RC</div>
+      <div>
+        <h1>Eenvoudige rekenmachine</h1>
+        <p class="subtitle">Ondersteunt + − × ÷, komma's en backspace</p>
+      </div>
+    </div>
+
+    <div class="display" id="display" aria-live="polite">
+      <div class="small" id="previous">&nbsp;</div>
+      <div class="main" id="current">0</div>
+    </div>
+
+    <div class="keys" role="group" aria-label="Toetsenbord rekenmachine">
+      <button class="key clear" data-action="clear">C</button>
+      <button class="key clear" data-action="delete">⌫</button>
+      <button class="key" data-action="percent">%</button>
+      <button class="key op" data-action="/">÷</button>
+
+      <button class="key" data-number="7">7</button>
+      <button class="key" data-number="8">8</button>
+      <button class="key" data-number="9">9</button>
+      <button class="key op" data-action="*">×</button>
+
+      <button class="key" data-number="4">4</button>
+      <button class="key" data-number="5">5</button>
+      <button class="key" data-number="6">6</button>
+      <button class="key op" data-action="-">−</button>
+
+      <button class="key" data-number="1">1</button>
+      <button class="key" data-number="2">2</button>
+      <button class="key" data-number="3">3</button>
+      <button class="key op" data-action="+">+</button>
+
+      <button class="key wide" data-number="0">0</button>
+      <button class="key" data-number=".">,</button>
+      <button class="key equal" data-action="=">=</button>
+    </div>
+  </main>
+
+  <script>
+    // Elementen
+    const previousEl = document.getElementById('previous')
+    const currentEl = document.getElementById('current')
+    const keys = document.querySelectorAll('.key')
+
+    // State
+    let current = ''
+    let previous = ''
+    let operation = null
+
+    function updateDisplay(){
+      currentEl.textContent = current === '' ? '0' : current
+      previousEl.textContent = previous === '' ? '\u00A0' : `${previous} ${operation ?? ''}`
+    }
+
+    function appendNumber(num){
+      if(num === '.'){
+        if(current.includes('.')) return
+        if(current === '') current = '0.'
+        else current += '.'
+      } else {
+        // voorkomen van leidende nullen
+        if(current === '0') current = num
+        else current += num
+      }
+    }
+
+    function chooseOperation(op){
+      if(current === '' && previous === '') return
+      if(current === '' && previous !== ''){
+        operation = op
+        updateDisplay()
+        return
+      }
+      if(previous !== '') compute()
+      operation = op
+      previous = current
+      current = ''
+    }
+
+    function compute(){
+      if(previous === '' || current === '') return
+      const a = parseFloat(previous)
+      const b = parseFloat(current)
+      let result = 0
+      switch(operation){
+        case '+': result = a + b; break
+        case '-': result = a - b; break
+        case '*': result = a * b; break
+        case '/': result = b === 0 ? 'Error' : a / b; break
+        default: return
+      }
+      // afronden om lange floats te beperken
+      if(typeof result === 'number') result = Math.round((result + Number.EPSILON) * 1e12) / 1e12
+      current = String(result)
+      previous = ''
+      operation = null
+    }
+
+    function clearAll(){ current = ''; previous = ''; operation = null; updateDisplay() }
+    function deleteChar(){ if(current !== '') current = current.slice(0,-1); updateDisplay() }
+
+    // Buttons
+    keys.forEach(key => {
+      key.addEventListener('click', () => {
+        const num = key.dataset.number
+        const action = key.dataset.action
+        if(num !== undefined) {
+          // nummer of komma (we store '.' internally)
+          if(num === '.') appendNumber('.')
+          else appendNumber(num)
+          updateDisplay()
+          return
+        }
+        if(action){
+          if(action === 'clear') { clearAll(); return }
+          if(action === 'delete') { deleteChar(); return }
+          if(action === 'percent'){
+            if(current !== '') current = String(parseFloat(current) / 100); updateDisplay(); return
+          }
+          if(action === '=') { compute(); updateDisplay(); return }
+          // operators
+          chooseOperation(action)
+          updateDisplay()
+        }
+      })
+    })
+
+    // Keyboard ondersteuning
+    window.addEventListener('keydown', (e) => {
+      const key = e.key
+      if((/^[0-9]$/).test(key)) { appendNumber(key); updateDisplay(); return }
+      if(key === '.') { appendNumber('.'); updateDisplay(); return }
+      if(key === ',' ) { appendNumber('.'); updateDisplay(); return }
+      if(key === 'Backspace') { deleteChar(); return }
+      if(key === 'Escape') { clearAll(); return }
+      if(key === 'Enter' || key === '=') { compute(); updateDisplay(); return }
+      if(key === '+' || key === '-' || key === '*' || key === '/') { chooseOperation(key); updateDisplay(); return }
+      if(key === '%') { if(current !== '') current = String(parseFloat(current) / 100); updateDisplay(); return }
+    })
+
+    // initialisatie
+    updateDisplay()
+  </script>
+</body>
+</html>
